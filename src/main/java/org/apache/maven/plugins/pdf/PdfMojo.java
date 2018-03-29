@@ -75,6 +75,7 @@ import org.apache.maven.plugin.PluginManager;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectBuilder;
 import org.apache.maven.reporting.AbstractMavenReportRenderer;
@@ -98,13 +99,14 @@ import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.json.JSONObject;
 
 /**
  * Generates a PDF document for a project documentation usually published as web site (with maven-site-plugin).
  *
  * @author ltheussl
  */
-@Mojo( name = "pdf", threadSafe = true )
+@Mojo( name = "pdf", requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
 public class PdfMojo
     extends AbstractMojo implements Contextualizable
 {
@@ -187,7 +189,7 @@ public class PdfMojo
      * The Maven Project Object.
      */
     @Parameter( defaultValue = "${project}", readonly = true, required = true )
-    private MavenProject project;
+    protected MavenProject project;
 
     /**
      * The Maven Settings.
@@ -694,6 +696,8 @@ public class PdfMojo
 
             appendGeneratedReports( doc, locale );
 
+            writeTOC( doc, locale );
+
             return doc;
         }
 
@@ -705,6 +709,8 @@ public class PdfMojo
         model.getToc().setName( i18n.getString( "pdf-plugin", getDefaultLocale(), "toc.title" ) );
 
         appendGeneratedReports( model, locale );
+
+        writeTOC( model, locale );
 
         debugLogGeneratedModel( model );
 
@@ -1083,6 +1089,9 @@ public class PdfMojo
             getLog().info( "Generating \"" + localReportName + "\" report." );
         }
 
+        // The report will eventually generate output by itself, so we set its output directory anyway.
+        report.setReportOutputDirectory( outDir );
+
         StringWriter sw = new StringWriter();
 
         PdfXdocSink sink = null;
@@ -1187,10 +1196,10 @@ public class PdfMojo
     /**
      * Append generated reports to the toc only if <code>generateReports</code> is enabled, for instance:
      * <pre>
-     * &lt;item name="Project Reports" ref="/project-info"&gt;
-     * &nbsp;&nbsp;&lt;item name="Project License" ref="/license" /&gt;
-     * &nbsp;&nbsp;&lt;item name="Project Team" ref="/team-list" /&gt;
-     * &nbsp;&nbsp;&lt;item name="Continuous Integration" ref="/integration" /&gt;
+     * &lt;item name="Project Reports" ref="project-info"&gt;
+     * &nbsp;&nbsp;&lt;item name="Project License" ref="license" /&gt;
+     * &nbsp;&nbsp;&lt;item name="Project Team" ref="team-list" /&gt;
+     * &nbsp;&nbsp;&lt;item name="Continuous Integration" ref="integration" /&gt;
      * &nbsp;&nbsp;...
      * &lt;/item&gt;
      * </pre>
@@ -1200,7 +1209,7 @@ public class PdfMojo
      * @see #generateMavenReports(Locale)
      * @since 1.1
      */
-    private void appendGeneratedReports( DocumentModel model, Locale locale )
+    protected void appendGeneratedReports( DocumentModel model, Locale locale )
     {
         if ( !includeReports )
         {
@@ -1213,7 +1222,7 @@ public class PdfMojo
 
         final DocumentTOCItem documentTOCItem = new DocumentTOCItem();
         documentTOCItem.setName( i18n.getString( "pdf-plugin", locale, "toc.project-info.item" ) );
-        documentTOCItem.setRef( "/project-info" ); // see #generateMavenReports(Locale)
+        documentTOCItem.setRef( "project-info" ); // see #generateMavenReports(Locale)
 
         List<String> addedRef = new ArrayList<String>( 4 );
 
@@ -1224,7 +1233,7 @@ public class PdfMojo
         {
             final DocumentTOCItem reportItem = new DocumentTOCItem();
             reportItem.setName( report.getName( locale ) );
-            reportItem.setRef( "/" + report.getOutputName() );
+            reportItem.setRef( report.getOutputName() );
 
             items.add( reportItem );
 
@@ -1264,7 +1273,7 @@ public class PdfMojo
                             {
                                 final DocumentTOCItem reportItem = new DocumentTOCItem();
                                 reportItem.setName( title );
-                                reportItem.setRef( "/" + ref );
+                                reportItem.setRef( ref );
 
                                 items.add( reportItem );
                             }
@@ -1282,6 +1291,30 @@ public class PdfMojo
         // append to Toc
         documentTOCItem.setItems( items );
         model.getToc().addItem( documentTOCItem );
+    }
+
+    private void writeTOC( DocumentModel model, Locale locale )
+    {
+        // FIXME: manage locales.
+        JSONObject toc = new JSONObject( model.getToc() );
+        File toFile = new File( workingDirectory, "toc.json" );
+        Writer writer = null;
+
+        try
+        {
+            writer = WriterFactory.newWriter( toFile, "UTF-8" );
+            writer.write( toc.toString() );
+            writer.close();
+            writer = null;
+        }
+        catch ( IOException e )
+        {
+            getLog().error( "Error while writing table of contents", e );
+        }
+        finally
+        {
+            IOUtil.close( writer );
+        }
     }
 
     /**
@@ -1345,7 +1378,7 @@ public class PdfMojo
         {
             reader = ReaderFactory.newXmlReader( generatedReport );
 
-            doxia.parse( reader, generatedReport.getParentFile().getName(), sinkAdapter );
+            doxia.parse( reader, "xdoc", sinkAdapter );
 
             reader.close();
             reader = null;
