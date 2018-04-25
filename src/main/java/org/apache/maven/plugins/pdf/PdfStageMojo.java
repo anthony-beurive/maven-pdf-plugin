@@ -46,17 +46,17 @@ import java.util.Locale;
  * Aggregates reports from all projects in a reactor.
  *
  * @author anthony-beurive
- * @since 1.4
+ * @since 1.5
  */
-@Mojo(name = "stage", aggregator = true, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
-@Execute(goal = "pdf" )
+@Mojo( name = "stage", aggregator = true, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
+@Execute( goal = "pdf" )
 public class PdfStageMojo
     extends PdfMojo
 {
     /**
      * The reactor projects.
      */
-    @Parameter(defaultValue = "${reactorProjects}", required = true, readonly = true )
+    @Parameter( defaultValue = "${reactorProjects}", required = true, readonly = true )
     private List<MavenProject> reactorProjects;
 
     @Override
