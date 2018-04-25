@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Aggregates reports from all projects in a reactor.
+ * Aggregates PDF content from all modules in a reactor.
  *
  * @author anthony-beurive
  * @since 1.5
@@ -204,11 +204,6 @@ public class PdfStageMojo
             projectPath.add( 0, p );
         }
         return projectPath.toArray( new MavenProject[0] );
-    }
-
-    private MavenProject getTopLevelProject()
-    {
-        return getProjectPath( project )[0];
     }
 
     private String getStagedId( MavenProject project )
