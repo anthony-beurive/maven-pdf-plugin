@@ -31,9 +31,7 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.ReaderFactory;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+import org.kopitubruk.util.json.JSONParser;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +39,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Aggregates PDF content from all modules in a reactor.
@@ -137,13 +136,12 @@ public class PdfStageMojo
         String stagedId = getStagedId( project );
         File tocFile = new File( getWorkingDirectory( project ), "toc.json" );
         Reader reader = null;
-        JSONObject toc;
+        Map<String, Object> toc;
 
         try
         {
             reader = ReaderFactory.newReader( tocFile, "UTF-8" );
-            JSONTokener tokener = new JSONTokener( reader );
-            toc = new JSONObject( tokener );
+            toc = (Map) JSONParser.parseJSON( reader );
         }
         catch ( IOException e )
         {
@@ -155,38 +153,38 @@ public class PdfStageMojo
             IOUtil.close( reader );
         }
 
-        JSONArray items = toc.getJSONArray( "items" );
+        ArrayList<Map<String, Object>> items = (ArrayList) toc.get( "items" );
 
         DocumentTOCItem tocItem = new DocumentTOCItem();
         tocItem.setName( project.getName() );
         tocItem.setRef( stagedId );
 
-        if ( items.length() == 1 && "project-info".equals( items.getJSONObject( 0 ).getString( "ref" ) ) )
+        if ( items.size() == 1 && "project-info".equals( items.get( 0 ).get( "ref" ) ) )
         {
             // Special case where a sub-project only contains generated reports.
-            items = items.getJSONObject( 0 ).getJSONArray( "items" );
+            items = (ArrayList) items.get( 0 ).get( "items" );
         }
 
-        for ( int i = 0; i < items.length(); i++ )
+        for ( int i = 0; i < items.size(); i++ )
         {
-            JSONObject item = items.getJSONObject( i );
+            Map<String, Object> item = items.get( i );
             addTOCItems( tocItem, item, stagedId );
         }
 
         topLevelToc.addItem( tocItem );
     }
 
-    private void addTOCItems( DocumentTOCItem parent, JSONObject item, String stagedId )
+    private void addTOCItems( DocumentTOCItem parent, Map<String, Object> item, String stagedId )
     {
         DocumentTOCItem tocItem = new DocumentTOCItem();
-        tocItem.setName( item.getString( "name" ) );
-        tocItem.setRef( stagedId + "/" + item.getString( "ref" ) );
+        tocItem.setName( (String) item.get( "name" ) );
+        tocItem.setRef( stagedId + "/" + item.get( "ref" ) );
 
-        JSONArray items = item.getJSONArray( "items" );
+        ArrayList<Map<String, Object>> items = (ArrayList) item.get( "items" );
 
-        for ( int i = 0; i < items.length(); i++ )
+        for ( int i = 0; i < items.size(); i++ )
         {
-            JSONObject it = items.getJSONObject( i );
+            Map<String, Object> it = items.get( i );
             addTOCItems( tocItem, it, stagedId );
         }
 

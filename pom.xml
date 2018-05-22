@@ -242,9 +242,9 @@ under the License.
 
     <!-- JSON -->
     <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>20171018</version>
+      <groupId>org.kopitubruk.util</groupId>
+      <artifactId>JSONUtil</artifactId>
+      <version>1.10.2-java6</version>
     </dependency>
 
     <!-- test dependencies -->

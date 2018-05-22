@@ -48,6 +48,7 @@ import org.apache.maven.doxia.docrenderer.DocumentRendererException;
 import org.apache.maven.doxia.docrenderer.pdf.PdfRenderer;
 import org.apache.maven.doxia.document.DocumentMeta;
 import org.apache.maven.doxia.document.DocumentModel;
+import org.apache.maven.doxia.document.DocumentTOC;
 import org.apache.maven.doxia.document.DocumentTOCItem;
 import org.apache.maven.doxia.document.io.xpp3.DocumentXpp3Writer;
 import org.apache.maven.doxia.index.IndexEntry;
@@ -99,7 +100,8 @@ import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.json.JSONObject;
+import org.kopitubruk.util.json.JSONConfig;
+import org.kopitubruk.util.json.JSONUtil;
 
 /**
  * Generates a PDF document for a project documentation usually published as web site (with maven-site-plugin).
@@ -1296,14 +1298,18 @@ public class PdfMojo
     private void writeTOC( DocumentModel model, Locale locale )
     {
         // FIXME: manage locales.
-        JSONObject toc = new JSONObject( model.getToc() );
+        DocumentTOC toc = model.getToc();
+        JSONConfig jsonConfig = new JSONConfig();
+        jsonConfig.addReflectClass( DocumentTOC.class );
+        jsonConfig.addReflectClass( DocumentTOCItem.class );
+        String jsonString = JSONUtil.toJSON( toc, jsonConfig );
         File toFile = new File( workingDirectory, "toc.json" );
         Writer writer = null;
 
         try
         {
             writer = WriterFactory.newWriter( toFile, "UTF-8" );
-            writer.write( toc.toString() );
+            writer.write( jsonString );
             writer.close();
             writer = null;
         }
