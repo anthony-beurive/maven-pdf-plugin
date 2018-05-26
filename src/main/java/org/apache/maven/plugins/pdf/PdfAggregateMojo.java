@@ -42,14 +42,14 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Aggregates PDF content from all modules in a reactor.
+ * Forks {@code pdf} goal then aggregates PDF content from all modules in the reactor.
  *
  * @author anthony-beurive
  * @since 1.5
  */
-@Mojo( name = "stage", aggregator = true, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
+@Mojo( name = "aggregate", aggregator = true, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
 @Execute( goal = "pdf" )
-public class PdfStageMojo
+public class PdfAggregateMojo
     extends PdfMojo
 {
     /**

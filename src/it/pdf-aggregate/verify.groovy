@@ -18,8 +18,8 @@
  * under the License.
  */
 
-pdfFile = new File( basedir, "target/pdf/parent.pdf" )
+pdfFile = new File( basedir, "target/pdf/root.pdf" )
 
-assert pdfFile.text.contains( "PDF:stage test: multi-module" )
-assert pdfFile.text.contains( "PDF:stage module A" )
-assert pdfFile.text.contains( "PDF:stage module B" )
+assert pdfFile.text.contains( "PDF:aggregate test: multi-module root" )
+assert pdfFile.text.contains( "PDF:aggregate test: module A" )
+assert pdfFile.text.contains( "PDF:aggregate test: module B" )

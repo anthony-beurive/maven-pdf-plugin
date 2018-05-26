@@ -24,12 +24,12 @@ under the License.
 
   <parent>
     <groupId>org.apache.maven.its.pdf</groupId>
-    <artifactId>parent</artifactId>
+    <artifactId>root</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>mod-b</artifactId>
-  <name>PDF:stage module B</name>
+  <name>PDF:aggregate test: module B</name>
   <description>
     This is module B for multi-module PDF.
   </description>
