@@ -100,8 +100,6 @@ import org.codehaus.plexus.util.ReaderFactory;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.kopitubruk.util.json.JSONConfig;
-import org.kopitubruk.util.json.JSONUtil;
 
 /**
  * Generates a PDF document for a project documentation usually published as web site (with maven-site-plugin).
@@ -698,7 +696,7 @@ public class PdfMojo
 
             appendGeneratedReports( doc, locale );
 
-            writeTOC( doc, locale );
+            saveTOC( doc.getToc(), locale );
 
             return doc;
         }
@@ -712,7 +710,7 @@ public class PdfMojo
 
         appendGeneratedReports( model, locale );
 
-        writeTOC( model, locale );
+        saveTOC( model.getToc(), locale );
 
         debugLogGeneratedModel( model );
 
@@ -1295,31 +1293,15 @@ public class PdfMojo
         model.getToc().addItem( documentTOCItem );
     }
 
-    private void writeTOC( DocumentModel model, Locale locale )
+    private void saveTOC( DocumentTOC toc, Locale locale )
     {
-        // FIXME: manage locales.
-        DocumentTOC toc = model.getToc();
-        JSONConfig jsonConfig = new JSONConfig();
-        jsonConfig.addReflectClass( DocumentTOC.class );
-        jsonConfig.addReflectClass( DocumentTOCItem.class );
-        String jsonString = JSONUtil.toJSON( toc, jsonConfig );
-        File toFile = new File( workingDirectory, "toc.json" );
-        Writer writer = null;
-
         try
         {
-            writer = WriterFactory.newWriter( toFile, "UTF-8" );
-            writer.write( jsonString );
-            writer.close();
-            writer = null;
+            TocFileHelper.saveTOC( workingDirectory, toc, locale );
         }
         catch ( IOException e )
         {
             getLog().error( "Error while writing table of contents", e );
-        }
-        finally
-        {
-            IOUtil.close( writer );
         }
     }
 

@@ -29,14 +29,14 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
-import org.codehaus.plexus.util.ReaderFactory;
-import org.kopitubruk.util.json.JSONParser;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -134,26 +134,10 @@ public class PdfAggregateMojo
     private void addTOCItems( DocumentTOC topLevelToc, MavenProject project )
     {
         String stagedId = getStagedId( project );
-        File tocFile = new File( getWorkingDirectory( project ), "toc.json" );
-        Reader reader = null;
-        Map<String, Object> toc;
 
-        try
-        {
-            reader = ReaderFactory.newReader( tocFile, "UTF-8" );
-            toc = (Map) JSONParser.parseJSON( reader );
-        }
-        catch ( IOException e )
-        {
-            getLog().error( "Error while reading table of contents of project " + project.getArtifactId(), e );
-            return;
-        }
-        finally
-        {
-            IOUtil.close( reader );
-        }
+        Map<String, Object> toc = loadToc( project );
 
-        ArrayList<Map<String, Object>> items = (ArrayList) toc.get( "items" );
+        List<Map<String, Object>> items = (ArrayList) toc.get( "items" );
 
         DocumentTOCItem tocItem = new DocumentTOCItem();
         tocItem.setName( project.getName() );
@@ -162,16 +146,28 @@ public class PdfAggregateMojo
         if ( items.size() == 1 && "project-info".equals( items.get( 0 ).get( "ref" ) ) )
         {
             // Special case where a sub-project only contains generated reports.
-            items = (ArrayList) items.get( 0 ).get( "items" );
+            items = (List) items.get( 0 ).get( "items" );
         }
 
-        for ( int i = 0; i < items.size(); i++ )
+        for ( Map<String, Object> item : items )
         {
-            Map<String, Object> item = items.get( i );
             addTOCItems( tocItem, item, stagedId );
         }
 
         topLevelToc.addItem( tocItem );
+    }
+
+    private Map<String, Object> loadToc( MavenProject project )
+    {
+        try
+        {
+            return TocFileHelper.loadToc( getWorkingDirectory( project ) );
+        }
+        catch ( IOException e )
+        {
+            getLog().error( "Error while reading table of contents of module " + project.getArtifactId(), e );
+            return Collections.<String, Object>emptyMap();
+        }
     }
 
     private void addTOCItems( DocumentTOCItem parent, Map<String, Object> item, String stagedId )
@@ -180,41 +176,35 @@ public class PdfAggregateMojo
         tocItem.setName( (String) item.get( "name" ) );
         tocItem.setRef( stagedId + "/" + item.get( "ref" ) );
 
-        ArrayList<Map<String, Object>> items = (ArrayList) item.get( "items" );
+        List<Map<String, Object>> items = (ArrayList) item.get( "items" );
 
-        for ( int i = 0; i < items.size(); i++ )
+        for ( Map<String, Object> it : items )
         {
-            Map<String, Object> it = items.get( i );
             addTOCItems( tocItem, it, stagedId );
         }
 
         parent.addItem( tocItem );
     }
 
-    private MavenProject[] getProjectPath( MavenProject project )
+    private String getStagedId( MavenProject p )
     {
-        MavenProject p = project;
-        List<MavenProject> projectPath = new ArrayList<MavenProject>();
-        projectPath.add( 0, p );
+        Deque<String> projectPath = new ArrayDeque<String>();
+        projectPath.addFirst( p.getArtifactId() );
         while ( p.getParent() != null )
         {
             p = p.getParent();
-            projectPath.add( 0, p );
+            projectPath.addFirst( p.getArtifactId() );
         }
-        return projectPath.toArray( new MavenProject[0] );
-    }
 
-    private String getStagedId( MavenProject project )
-    {
         StringBuilder stagedId = new StringBuilder();
-        MavenProject[] projectPath = getProjectPath( project );
-        for ( int i = 1; i < projectPath.length; i++ )
+        Iterator<String> artifactIds = projectPath.iterator();
+        while ( artifactIds.hasNext() )
         {
-            if ( i > 1 )
+            stagedId.append( artifactIds.next() );
+            if ( artifactIds.hasNext() )
             {
-                stagedId.append( "/" );
+                stagedId.append( '/' );
             }
-            stagedId.append( projectPath[i].getArtifactId() );
         }
         return stagedId.toString();
     }
