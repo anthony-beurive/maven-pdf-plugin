@@ -50,13 +50,46 @@ import java.util.Map;
 @Mojo( name = "aggregate", aggregator = true, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
 @Execute( goal = "pdf" )
 public class PdfAggregateMojo
-    extends PdfMojo
+    extends PdfMojo // TODO should extend AbstractPdfMojo, but requires extensive refactoring
 {
     /**
      * The reactor projects.
      */
     @Parameter( defaultValue = "${reactorProjects}", required = true, readonly = true )
     private List<MavenProject> reactorProjects;
+
+    /**
+     * Output directory where aggregated PDF files should be created.
+     */
+    @Parameter( defaultValue = "${project.build.directory}/pdf-aggregate", required = true )
+    private File aggregatedOutputDirectory;
+
+    /**
+     * Working directory for aggregated working files like temp files/resources.
+     */
+    @Parameter( defaultValue = "${project.build.directory}/pdf-aggregate", required = true )
+    private File aggregatedWorkingDirectory;
+
+    protected File getOutputDirectory()
+    {
+        return aggregatedOutputDirectory;
+    }
+
+    protected File getWorkingDirectory()
+    {
+        return aggregatedWorkingDirectory;
+    }
+
+    protected boolean isIncludeReports()
+    {
+        return false; // reports were generate (or not) during pdf:pdf: here, we only aggregate
+    }
+
+    protected void prepareTempSiteDirectory( final File tmpSiteDir )
+        throws IOException
+    {
+        tmpSiteDir.mkdirs();
+    }
 
     @Override
     protected void appendGeneratedReports( DocumentModel model, Locale locale )
@@ -67,7 +100,15 @@ public class PdfAggregateMojo
 
         DocumentTOC toc = model.getToc();
 
-        File dstSiteTmp = getSiteDirectoryTmp( project );
+        File dstSiteTmp = null;
+        try
+        {
+            dstSiteTmp = getSiteDirectoryTmp();
+        }
+        catch ( IOException ioe )
+        {
+            getLog().error( "unexpected IOException while getting aggregator root tmp site dir", ioe );
+        }
         if ( !dstSiteTmp.exists() )
         {
             getLog().error( "Top-level project does not have src.tmp directory" );
@@ -76,11 +117,6 @@ public class PdfAggregateMojo
 
         for ( MavenProject reactorProject : reactorProjects )
         {
-            if ( reactorProject == this.project )
-            {
-                continue;
-            }
-
             getLog().info( "Appending " + reactorProject.getArtifactId() + " reports." );
 
             copySiteDirectoryTmp( reactorProject, dstSiteTmp );
@@ -98,7 +134,7 @@ public class PdfAggregateMojo
             return;
         }
 
-        File srcSiteTmp = getSiteDirectoryTmp( project );
+        File srcSiteTmp = getModuleSiteDirectoryTmp( project );
         if ( !srcSiteTmp.exists() )
         {
             getLog().info( "Skipping reactor project " + project + ": no site.tmp directory" );
@@ -161,7 +197,7 @@ public class PdfAggregateMojo
     {
         try
         {
-            return TocFileHelper.loadToc( getWorkingDirectory( project ) );
+            return TocFileHelper.loadToc( getModuleWorkingDirectory( project ) );
         }
         catch ( IOException e )
         {
@@ -209,13 +245,13 @@ public class PdfAggregateMojo
         return stagedId.toString();
     }
 
-    private File getWorkingDirectory( MavenProject project )
+    private File getModuleWorkingDirectory( MavenProject project )
     {
         return new File( project.getBuild().getDirectory(), "pdf" );
     }
 
-    private File getSiteDirectoryTmp( MavenProject project )
+    private File getModuleSiteDirectoryTmp( MavenProject project )
     {
-        return new File( getWorkingDirectory( project ), "site.tmp" );
+        return new File( getModuleWorkingDirectory( project ), "site.tmp" );
     }
 }

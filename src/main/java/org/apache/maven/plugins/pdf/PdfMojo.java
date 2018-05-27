@@ -69,7 +69,6 @@ import org.apache.maven.doxia.tools.SiteToolException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.ReportPlugin;
 import org.apache.maven.model.Reporting;
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.PluginManager;
@@ -108,7 +107,7 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
  */
 @Mojo( name = "pdf", requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true )
 public class PdfMojo
-    extends AbstractMojo implements Contextualizable
+    extends AbstractPdfMojo implements Contextualizable
 {
 
     /**
@@ -345,13 +344,6 @@ public class PdfMojo
     private DecorationModel defaultDecorationModel;
 
     /**
-     * The temp Site dir to have all site and generated-site files.
-     *
-     * @since 1.1
-     */
-    private File siteDirectoryTmp;
-
-    /**
      * The temp Generated Site dir to have generated reports by this plugin.
      *
      * @since 1.1
@@ -408,6 +400,21 @@ public class PdfMojo
         container = (PlexusContainer) context.get( PlexusConstants.PLEXUS_KEY );
     }
 
+    protected File getOutputDirectory()
+    {
+        return outputDirectory;
+    }
+
+    protected File getWorkingDirectory()
+    {
+        return workingDirectory;
+    }
+
+    protected boolean isIncludeReports()
+    {
+        return includeReports;
+    }
+
     // ----------------------------------------------------------------------
     // Private methods
     // ----------------------------------------------------------------------
@@ -453,7 +460,8 @@ public class PdfMojo
     private void copyGeneratedPdf()
         throws MojoExecutionException, IOException
     {
-        boolean requireCopy = !outputDirectory.getCanonicalPath().equals( workingDirectory.getCanonicalPath() );
+        boolean requireCopy =
+            !getOutputDirectory().getCanonicalPath().equals( getWorkingDirectory().getCanonicalPath() );
 
         String outputName = getDocumentModel( getDefaultLocale() ).getOutputName().trim();
         if ( !outputName.endsWith( ".pdf" ) )
@@ -463,7 +471,7 @@ public class PdfMojo
 
         for ( final Locale locale : getAvailableLocales() )
         {
-            File generatedPdfSource = new File( getLocaleDirectory( workingDirectory, locale ), outputName );
+            File generatedPdfSource = new File( getLocaleDirectory( getWorkingDirectory(), locale ), outputName );
 
             if ( !generatedPdfSource.exists() )
             {
@@ -471,7 +479,7 @@ public class PdfMojo
                 continue;
             }
 
-            File generatedPdfDest = new File( getLocaleDirectory( outputDirectory, locale ), outputName );
+            File generatedPdfDest = new File( getLocaleDirectory( getOutputDirectory(), locale ), outputName );
 
             if ( requireCopy )
             {
@@ -497,7 +505,7 @@ public class PdfMojo
 
         for ( final Locale locale : getAvailableLocales() )
         {
-            final File workingDir = getLocaleDirectory( workingDirectory, locale );
+            final File workingDir = getLocaleDirectory( getWorkingDirectory(), locale );
 
             File siteDirectoryFile = getLocaleDirectory( getSiteDirectoryTmp(), locale );
 
@@ -536,25 +544,6 @@ public class PdfMojo
     }
 
     /**
-     * @return the default tmpSiteDirectory.
-     * @throws IOException if any
-     * @since 1.1
-     */
-    private File getSiteDirectoryTmp()
-        throws IOException
-    {
-        if ( this.siteDirectoryTmp == null )
-        {
-            final File tmpSiteDir = new File( workingDirectory, "site.tmp" );
-            prepareTempSiteDirectory( tmpSiteDir );
-
-            this.siteDirectoryTmp = tmpSiteDir;
-        }
-
-        return this.siteDirectoryTmp;
-    }
-
-    /**
      * @return the default tmpGeneratedSiteDirectory when report will be created.
      * @since 1.1
      */
@@ -562,7 +551,7 @@ public class PdfMojo
     {
         if ( this.generatedSiteDirectoryTmp == null )
         {
-            this.generatedSiteDirectoryTmp = new File( workingDirectory, "generated-site.tmp" );
+            this.generatedSiteDirectoryTmp = new File( getWorkingDirectory(), "generated-site.tmp" );
         }
 
         return this.generatedSiteDirectoryTmp;
@@ -578,7 +567,7 @@ public class PdfMojo
      * @throws IOException if any
      * @since 1.1
      */
-    private void prepareTempSiteDirectory( final File tmpSiteDir )
+    protected void prepareTempSiteDirectory( final File tmpSiteDir )
         throws IOException
     {
         // safety
@@ -906,7 +895,7 @@ public class PdfMojo
                                                    project.getName(), locale );
             context.addSiteDirectory( new File( siteDirectory, locale.getLanguage() ) );
 
-            siteRenderer.copyResources( context, workingDirectory );
+            siteRenderer.copyResources( context, getWorkingDirectory() );
         }
         catch ( IOException e )
         {
@@ -980,7 +969,7 @@ public class PdfMojo
     private void generateMavenReports( Locale locale )
         throws MojoExecutionException, IOException
     {
-        if ( !includeReports )
+        if ( !isIncludeReports() )
         {
             getLog().info( "Skipped report generation." );
             return;
@@ -1211,7 +1200,7 @@ public class PdfMojo
      */
     protected void appendGeneratedReports( DocumentModel model, Locale locale )
     {
-        if ( !includeReports )
+        if ( !isIncludeReports() )
         {
             return;
         }
@@ -1297,7 +1286,7 @@ public class PdfMojo
     {
         try
         {
-            TocFileHelper.saveTOC( workingDirectory, toc, locale );
+            TocFileHelper.saveTOC( getWorkingDirectory(), toc, locale );
         }
         catch ( IOException e )
         {

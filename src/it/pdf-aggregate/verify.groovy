@@ -18,7 +18,7 @@
  * under the License.
  */
 
-pdfFile = new File( basedir, "target/pdf/root.pdf" )
+pdfFile = new File( basedir, "target/pdf-aggregate/root.pdf" )
 
 assert pdfFile.text.contains( "PDF:aggregate test: multi-module root" )
 assert pdfFile.text.contains( "PDF:aggregate test: module A" )
